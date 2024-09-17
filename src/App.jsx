@@ -55,7 +55,7 @@ const average = (arr) =>
 const KEY = "a0f1bb48";
 
 export default function App() {
-  const [query, setQuery] = useState("interstellar");
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
   const [watched, setWatched] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -99,13 +99,16 @@ export default function App() {
 
   useEffect(
     function () {
+      const controller = new AbortController();
+
       async function fetchMovies() {
         try {
           setIsLoading(true);
           setError(""); // To avoid simultaneous conflict with loading
 
           const res = await fetch(
-            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`
+            `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
+            { signal: controller.signal }
           );
           if (!res.ok)
             throw new Error("Something went wrong with fetching movie");
@@ -114,9 +117,13 @@ export default function App() {
           if (data.Response === "False") throw new Error("Movie not found");
 
           setMovies(data.Search);
-          // console.log(data.Search);
+          setError("");
         } catch (err) {
-          setError(err.message);
+          // abort error handle
+          if (err.name !== "AbortError") {
+            console.log(err.message);
+            setError(err.message);
+          }
         } finally {
           setIsLoading(false);
         }
@@ -128,7 +135,13 @@ export default function App() {
         return;
       }
 
+      handleCloseMovie(); // on search close detail component
       fetchMovies();
+
+      // Clean function
+      return function () {
+        controller.abort();
+      };
     },
     [query]
   );
@@ -364,11 +377,36 @@ function MovieDetails({ selectedId, watched, onCloseMovie, onAddWatched }) {
     onCloseMovie();
   }
 
+  // Esc keydown event
+  useEffect(
+    function () {
+      function callBack(e) {
+        if (e.code === "Escape") {
+          onCloseMovie();
+        }
+        console.log("CLOSE");
+      }
+
+      document.addEventListener("keydown", callBack);
+
+      // Cleanup function
+      return function () {
+        document.removeEventListener("keydown", callBack);
+      };
+    },
+    [onCloseMovie]
+  );
+
   useEffect(
     function () {
       if (!title) return;
 
       document.title = `Movie | ${title}`;
+
+      return function () {
+        document.title = "usePopcorn";
+        // console.log(`Cleanup effect for movie ${title}`);
+      };
     },
     [title]
   );
@@ -382,7 +420,7 @@ function MovieDetails({ selectedId, watched, onCloseMovie, onAddWatched }) {
         );
 
         const data = await res.json();
-        console.log(data);
+        // console.log(data);
         setMovie(data);
         setIsLoading(false);
       }
