@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import StarRating from "./StarRating.jsx";
 
 const average = (arr) =>
@@ -54,6 +54,7 @@ export default function App() {
           setIsLoading(true);
           setError(""); // To avoid simultaneous conflict with loading
 
+          // controller attached
           const res = await fetch(
             `http://www.omdbapi.com/?apikey=${KEY}&s=${query}`,
             { signal: controller.signal }
@@ -157,12 +158,43 @@ function Logo() {
 }
 
 function SearchBar({ query, setQuery }) {
+  const inputEl = useRef(null);
+
+  useEffect(
+    function () {
+      function callBack(e) {
+        if (document.activeElement === inputEl.current) return;
+
+        if (e.code === "Enter") {
+          inputEl.current.focus();
+          setQuery("");
+        }
+      }
+
+      document.addEventListener("keydown", callBack);
+
+      return () => document.addEventListener("keydown", callBack);
+    },
+    [setQuery]
+  );
+
+  // Selecting DOM elements
+  // useEffect(
+  //   function () {
+  //     const el = document.querySelector(".search");
+  //     console.log(el);
+  //     el.focus();
+  //   },
+  //   [query]
+  // );
+
   return (
     <input
       className="search"
       type="text"
       placeholder="Search movies..."
       value={query}
+      ref={inputEl}
       onChange={(e) => setQuery(e.target.value)}
     />
   );
@@ -291,6 +323,15 @@ function MovieDetails({ selectedId, watched, onCloseMovie, onAddWatched }) {
   const [isLoading, setIsLoading] = useState(false);
   const [userRating, setUserRating] = useState("");
 
+  const count = useRef(0);
+
+  useEffect(
+    function () {
+      if (userRating) count.current++;
+    },
+    [userRating]
+  );
+
   const isWatched = watched.map((movie) => movie.imdbID).includes(selectedId);
 
   const watchedUserRating = watched.find(
@@ -322,6 +363,7 @@ function MovieDetails({ selectedId, watched, onCloseMovie, onAddWatched }) {
       runtime: +runtime.split(" ").at(0),
       poster,
       userRating,
+      countRatingDecisions: count,
     };
 
     onAddWatched(newWatchedMovie);
