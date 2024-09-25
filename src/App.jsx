@@ -5,6 +5,7 @@ import StarRating from "./StarRating.jsx";
 // Custom Hooks
 import { useMovies } from "./useMovies.jsx";
 import { useLocalStorageState } from "./useLocalStorageState.jsx";
+import { useKey } from "./useKey.jsx";
 
 const average = (arr) =>
   arr.reduce((acc, cur, i, arr) => acc + cur / arr.length, 0);
@@ -100,33 +101,11 @@ function Logo() {
 function SearchBar({ query, setQuery }) {
   const inputEl = useRef(null);
 
-  useEffect(
-    function () {
-      function callBack(e) {
-        if (document.activeElement === inputEl.current) return;
-
-        if (e.code === "Enter") {
-          inputEl.current.focus();
-          setQuery("");
-        }
-      }
-
-      document.addEventListener("keydown", callBack);
-
-      return () => document.addEventListener("keydown", callBack);
-    },
-    [setQuery]
-  );
-
-  // Selecting DOM elements
-  // useEffect(
-  //   function () {
-  //     const el = document.querySelector(".search");
-  //     console.log(el);
-  //     el.focus();
-  //   },
-  //   [query]
-  // );
+  useKey("Enter", function () {
+    if (document.activeElement === inputEl.current) return;
+    inputEl.current.focus();
+    setQuery("");
+  });
 
   return (
     <input
@@ -311,24 +290,7 @@ function MovieDetails({ selectedId, watched, onCloseMovie, onAddWatched }) {
   }
 
   // Esc keydown event
-  useEffect(
-    function () {
-      function callBack(e) {
-        if (e.code === "Escape") {
-          onCloseMovie();
-        }
-        console.log("CLOSE");
-      }
-
-      document.addEventListener("keydown", callBack);
-
-      // Cleanup function
-      return function () {
-        document.removeEventListener("keydown", callBack);
-      };
-    },
-    [onCloseMovie]
-  );
+  useKey("Escape", onCloseMovie);
 
   useEffect(
     function () {
